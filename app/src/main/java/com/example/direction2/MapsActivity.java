@@ -50,9 +50,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private List<Vert> listVert = ListVert.getInstance().getList();
     private String[] sourceString = ListVert.getInstance().getString();
     private String location;
+    private final LatLng g2 = new LatLng(21.0380824, 105.783381);
 
-    Vert vStart = listVert.get(0);
+    Vert vStart;
     Vert vEnd;
+    Vert v = new Vert();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,62 +91,39 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     y = Double.parseDouble(splits[1]);
                     Log.d("TAG", "x , y: " + x + " " + y);
                 }
-                Vert v = new Vert();
+                v.setName(location);
+                System.out.println("map data 1: " + location);
                 v = convertToGlbLat(x, y);
+
                 if (location != null) {
                     Log.d("TAG", "glb x , y: " + v.getLat() + " " + v.getLng());
                     mMap.addMarker(new MarkerOptions()
+                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ROSE))
                             .position(new LatLng(v.getLat(), v.getLng())));
                     LatLng tempL = new LatLng(v.getLat(), v.getLng());
                     mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(tempL, 26));
                 }
             }
         };
+
+
+
         LocalBroadcastManager.getInstance(MapsActivity.this).registerReceiver(
                 mMessageReceiver, new IntentFilter("GPSLocationUpdates"));
         mapFragment.getMapAsync(this);
-
-
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-
-
-    }
-
-    @Override
-    public void onMapReady(@NonNull GoogleMap googleMap) {
-        mMap = googleMap;
-
-
-//        LatLngBounds newarkBounds = new LatLngBounds(
-//                new LatLng(21.037985, 105.783142),       // tây nam corner - điểm cuối bên trái
-//                new LatLng(21.038186, 105.783621));      // đông bắc corner - điểm trên bên phải
-        LatLng g2 = new LatLng(21.0380824, 105.783381); // tạo location có tọa độ lat, long tương ứng g2
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(g2, 20));// move camera tới toa do g2.
         GroundOverlayOptions newarkMap = new GroundOverlayOptions()
                 .image(BitmapDescriptorFactory.fromResource(R.drawable.tang1g2))
                 .bearing(1.5f)
                 .position(g2, 49.3883f, 24.8f);
-        mMap.addGroundOverlay(newarkMap);
-
-        System.out.println("data map ready: " + location);
-
-//       String  yourData = intent.getStringExtra("Status");
-
-
-//        for (int i = 1; i < listVert.size(); i++) {
-//            mMap.addMarker(new MarkerOptions()
-//                    .position(new LatLng(listVert.get(i).getLat(), listVert.get(i).getLng())));
-//        }
+//        mMap.addMarker(new MarkerOptions()
+//                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+//                .position(new LatLng(v.getLat(), v.getLng())));
 
         binding.autoComplete.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> arg0, View arg1, int arg2, long arg3) {
                 InputMethodManager in = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-
+                vStart = listVert.get(findMin(v));
                 for (int i = 0; i < 16; i++) {
                     mMap.clear();
                     if (binding.autoComplete.getText().toString().equals(listVert.get(i).getName())) {
@@ -170,12 +149,22 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             @Override
             public void onClick(View v) {
                 binding.dicrectionButton.setVisibility(View.GONE);
-                findShortestPath(vStart, vEnd);
-                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(g2, 20));
                 binding.cancelButton.setVisibility(View.VISIBLE);
-//                binding.dicrectionButton.setVisibility(View.GONE);
-//                findShortestPath(vStart, vEnd);
-//                binding.cancelButton.setVisibility(View.VISIBLE);
+                while(stateDirection) {
+
+                    Log.d("click", "onClick start ");
+//                for(int i = 0; i < 10; i ++ ){
+//                    Log.d("click", "onClick: " + i);
+                    findShortestPath(vStart, vEnd);
+
+//                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(g2, 20));
+
+                    stateDirection = false;
+                    break;
+                }
+
+
+//                }
             }
         });
 
@@ -183,6 +172,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             @Override
             public void onClick(View v) {
                 mMap.clear();
+                binding.autoComplete.setText("");
                 LatLng g2 = new LatLng(21.0380824, 105.783381); // tạo location có tọa độ lat, long tương ứng g2
                 GroundOverlayOptions newarkMap = new GroundOverlayOptions()
                         .image(BitmapDescriptorFactory.fromResource(R.drawable.tang1g2))
@@ -201,12 +191,23 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         binding.swap.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                binding.autoComplete.setText("");
+                mMap.clear();
+                GroundOverlayOptions newarkMap = new GroundOverlayOptions()
+                        .image(BitmapDescriptorFactory.fromResource(R.drawable.tang1g2))
+                        .bearing(1.5f)
+                        .position(g2, 49.3883f, 24.8f);
+                mMap.addGroundOverlay(newarkMap);
                 if (state) {
                     binding.autoComplete.setVisibility(View.INVISIBLE);
                     binding.subContainer.setVisibility(View.VISIBLE);
                     binding.dicrectionButton.setVisibility(View.VISIBLE);
+                    if(serviceIsRunning())
+                        stopBlackIceService();
                     state = false;
                 } else {
+                    if(!serviceIsRunning())
+                        startBlackIceService();
                     binding.autoComplete.setVisibility(View.VISIBLE);
                     binding.subContainer.setVisibility(View.INVISIBLE);
                     binding.dicrectionButton.setVisibility(View.GONE);
@@ -232,8 +233,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
-                vEnd = null;
-                vStart = null;
+
             }
         });
 
@@ -250,10 +250,46 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
-                vEnd = null;
-                vStart = null;
+
             }
         });
+
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+
+    }
+
+    @Override
+    public void onMapReady(@NonNull GoogleMap googleMap) {
+        mMap = googleMap;
+        System.out.println("map data: " + v.getName());
+
+
+//        LatLngBounds newarkBounds = new LatLngBounds(
+//                new LatLng(21.037985, 105.783142),       // tây nam corner - điểm cuối bên trái
+//                new LatLng(21.038186, 105.783621));      // đông bắc corner - điểm trên bên phải
+        LatLng g2 = new LatLng(21.0380824, 105.783381); // tạo location có tọa độ lat, long tương ứng g2
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(g2, 20));// move camera tới toa do g2.
+        GroundOverlayOptions newarkMap = new GroundOverlayOptions()
+                .image(BitmapDescriptorFactory.fromResource(R.drawable.tang1g2))
+                .bearing(1.5f)
+                .position(g2, 49.3883f, 24.8f);
+        mMap.addGroundOverlay(newarkMap);
+
+
+//       String  yourData = intent.getStringExtra("Status");
+
+
+//        for (int i = 1; i < listVert.size(); i++) {
+//            mMap.addMarker(new MarkerOptions()
+//                    .position(new LatLng(listVert.get(i).getLat(), listVert.get(i).getLng())));
+//        }
+
+
 
     }
 
@@ -261,14 +297,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         Vert userX = new Vert();
         double lcLatTemp, lcLongTemp;
         //Converting (x, y) to (latitude, longitude)
-        lcLatTemp = lat0 + 0.18 * pow(10, -4) * (x / 100 * cos(0.01745329252) - y / 100 * sin(0.01745329252));
+        lcLatTemp = 21.0379710 + 1.16 * pow(10, -5) * (y  * cos(0.01745329252) - x  * sin(0.01745329252));
         userX.setLat(lcLatTemp);
-        lcLongTemp = long0 + 0.1975 * pow(10, -4) * (x / 100 * cos(0.01745329252) + y / 100 * sin(0.01745329252));
+        lcLongTemp = 105.7834030 + 1.16 * pow(10, -5) * (x  * cos(0.01745329252) + y  * sin(0.01745329252));
         userX.setLng(lcLongTemp);
         return userX;
     }
 
-    public int findMax(Vert x) {
+    public int findMin(Vert x) {
         Vert vX = new Vert();
         int tempI = 0;
         double min = 100.0;
@@ -292,12 +328,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         List<Double> pathlat = new ArrayList<>();
         pathlng = shortestPath.getShortestPLong(vTempEnd);
         pathlat = shortestPath.getShortestPLat(vTempEnd);
-//        System.out.println(pathlat);
-//        System.out.println(pathlng);
         mMap.addMarker(new MarkerOptions()
-                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
-                .position(new LatLng(vTempStart.getLat(),vTempStart.getLng())));
-
+                .icon(BitmapDescriptorFactory.defaultMarker(100))
+                .position(new LatLng(vStart.getLat(),vStart.getLng())));
         mMap.addMarker(new MarkerOptions()
                 .position(new LatLng(vTempEnd.getLat(), vTempEnd.getLng())));
 

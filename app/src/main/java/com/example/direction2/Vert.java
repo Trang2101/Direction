@@ -88,8 +88,20 @@ public class Vert implements Comparable<Vert> {
         return this.name;
     }
 
+    public int compare(Vert v1, Vert v2) {
+        if (v1.getDist() < v2.getDist()) {
+            return -1;
+        } else if (v1.getDist() > v2.getDist()) {
+            return 1;
+        } else {
+            // Nếu hai đỉnh bằng nhau về giá trị của trường dist,
+            // ta so sánh chúng bằng tên đỉnh để đảm bảo tính chất uniqueness
+            return v1.getName().compareTo(v2.getName());
+        }
+    }
+
     @Override
-    public int compareTo(Vert otherV) {
-        return Double.compare(this.dist, otherV.getDist());
+    public int compareTo(Vert o) {
+        return 0;
     }
 }
