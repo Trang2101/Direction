@@ -15,12 +15,10 @@ import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Timer;
-import java.util.TimerTask;
 
 public class MQTTService extends MqttService {
-    public static final String BROKER_URL = "tcp://192.168.51.17:1883";
+    public static final String BROKER_URL = "tcp://192.168.1.9:1883";
     public static final String clientId = "ID";
     public static final String TOPIC = "tag0";
     private MqttClient mqttClient;
@@ -42,8 +40,9 @@ public class MQTTService extends MqttService {
 
         try {
             mqttClient = new MqttClient(BROKER_URL, clientId, new MemoryPersistence());
+            mqttClient.connect();
+            mqttClient.subscribe(TOPIC);
             mqttClient.setCallback(new MqttCallback() {
-
                 @Override
                 public void connectionLost(Throwable cause) {
                 }
@@ -61,7 +60,7 @@ public class MQTTService extends MqttService {
                 public void deliveryComplete(IMqttDeliveryToken token) {
                 }
             });
-            mqttClient.connect();
+//            mqttClient.connect();
 
         } catch (MqttException e) {
             Log.d("TAG", "run: MqttException" + e.getLocalizedMessage());
